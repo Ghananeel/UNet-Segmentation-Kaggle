@@ -7,7 +7,7 @@ channels=3
 n_class=2
 
 class UNet(object):
-    def __init__(self, x, y, img_rows = 32, img_cols = 32):
+    def __init__(self, x, y, img_rows = 128, img_cols = 128):
         self.img_rows=img_rows
         self.img_cols=img_cols
         self.x=x
@@ -16,16 +16,19 @@ class UNet(object):
         self.model=self.model()
 
     def model(self):
-        conv1_1=self.conv(self.x, 3, 16)
-        conv1_2=self.conv(conv1_1, 3, 16)
+        conv1_1=self.conv(self.x, 3, 64)
+        conv1_1=self.dropout(conv1_1,0.7)
+        conv1_2=self.conv(conv1_1, 3, 64)
         pool1=self.max_pool(conv1_2, 2, 2)
 
-        conv2_1=self.conv(pool1, 3, 32)
-        conv2_2=self.conv(conv2_1, 3, 32)
+        conv2_1=self.conv(pool1, 3, 128)
+        conv2_1=self.dropout(conv2_1,0.7)
+        conv2_2=self.conv(conv2_1, 3, 128)
         pool2=self.max_pool(conv2_2, 2, 2)
 
-        conv3_1=self.conv(pool2, 3, 64)
-        conv3_2=self.conv(conv3_1, 3, 64)
+        conv3_1=self.conv(pool2, 3, 256)
+        conv3_1=self.dropout(conv3_1,0.7)
+        conv3_2=self.conv(conv3_1, 3, 256)
         #pool3=self.max_pool(conv3_2, 2, 2)
 
         #conv4_1=self.conv(pool3, 3, 512)
@@ -47,16 +50,18 @@ class UNet(object):
 
         deconv3_1=self.deconv(conv3_1, 2)
         deconv3_2=self.concatenate(deconv3_1,conv2_2)
-        deconv3_3=self.conv(deconv3_2, 3, 32)
-        deconv3_4=self.conv(deconv3_3, 3, 32)
+        deconv3_3=self.conv(deconv3_2, 3, 128)
+        deconv3_3=self.dropout(deconv3_3,0.7)
+        deconv3_4=self.conv(deconv3_3, 3, 128)
 
         deconv4_1=self.deconv(deconv3_4, 2)
         deconv4_2=self.concatenate(deconv4_1,conv1_2)
-        deconv4_3=self.conv(deconv4_2, 3, 16)
-        deconv4_4=self.conv(deconv4_3, 3, 16)
+        deconv4_3=self.conv(deconv4_2, 3, 64)
+        deconv4_3=self.dropout(deconv4_3,0.7)
+        deconv4_4=self.conv(deconv4_3, 3, 64)
 
         deconv_shape=deconv4_4.get_shape().as_list()
-        weights=tf.Variable(tf.random_normal((1,1,deconv_shape[3],self.n_class),stddev=0.05))
+        weights=tf.Variable(tf.random_normal((1,1,deconv_shape[3],1),stddev=0.05))
         biases=tf.Variable(tf.constant(0.05),1)
         self.output=(tf.nn.conv2d(input=deconv4_4,filter=weights,strides=[1,1,1,1], padding='SAME')+biases)
 
@@ -90,3 +95,6 @@ class UNet(object):
 
     def concatenate(self, layer1, layer2):
         return tf.concat([layer1,layer2], axis=3)
+
+    def dropout(self,x,keep_prob):
+        return tf.nn.dropout(x,keep_prob)
